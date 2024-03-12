@@ -61,12 +61,11 @@ public class Main {
 
     public static void sendResponse(Socket clientSocket, String message) throws IOException{
         OutputStream response = clientSocket.getOutputStream();
-        String responseBody = message;  // Example response body
         String responseHeaders = "HTTP/1.1 200 OK\r\n" + // Status line
                 "Content-Type: text/plain\r\n" +
-                "Content-Length: " + responseBody.length() + "\r\n" + // Header
+                "Content-Length: " + message.length() + "\r\n" + // Header
                 "\r\n" + // Blank line to end headers
-                responseBody; // Response body
+                message; // Response body
         response.write(responseHeaders.getBytes());
 
     }
