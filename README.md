@@ -1,5 +1,3 @@
-[![progress-banner](https://backend.codecrafters.io/progress/http-server/195f0b4f-cbed-40ef-9a94-a6279c395403)](https://app.codecrafters.io/users/codecrafters-bot?r=2qF)
-
 This is a starting point for Java solutions to the
 ["Build Your Own HTTP server" Challenge](https://app.codecrafters.io/courses/http-server/overview).
 
@@ -11,13 +9,10 @@ Along the way you'll learn about TCP servers,
 [HTTP request syntax](https://www.w3.org/Protocols/rfc2616/rfc2616-sec5.html),
 and more.
 
-**Note**: If you're viewing this repo on GitHub, head over to
-[codecrafters.io](https://codecrafters.io) to try the challenge.
-
 # Passing the first stage
 
 The entry point for your HTTP server implementation is in
-`src/main/java/Main.java`. Study and uncomment the relevant code, and push your
+`src/main/java/Main.java`. Study and push your
 changes to pass the first stage:
 
 ```sh
