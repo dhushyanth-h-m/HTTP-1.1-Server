@@ -47,26 +47,32 @@ class Worker implements Runnable{
             StringBuilder headerBuilder = new StringBuilder();
             StringBuilder bodyBuilder = new StringBuilder();
 
-            boolean isHeaderParsed = false;
+            int contentLength = 0;
+            // Reading headers
+            while ((line = reader.readLine()) != null && !line.isEmpty()) {
+                headerBuilder.append(line).append("\r\n");
 
-            while ((line = reader.readLine()) != null) {
-                if (!isHeaderParsed && line.isEmpty()) {
-                    isHeaderParsed = true;
-                    continue; // Skip the first blank line
-                }
-
-                if (isHeaderParsed) {
-                    bodyBuilder.append(line).append("\r\n");
-                } else {
-                    headerBuilder.append(line).append("\r\n");
+                // Check for Content-Length header
+                if (line.startsWith("Content-Length: ")) {
+                    contentLength = Integer.parseInt(line.substring("Content-Length: ".length()));
                 }
             }
 
-            String requestBody = bodyBuilder.toString();
+            // Reading the body if Content-Length is provided
+            if (contentLength > 0) {
+                int readChars = 0;
+                char[] bodyChars = new char[contentLength];
+                while (readChars < contentLength) {
+                    int result = reader.read(bodyChars, readChars, contentLength - readChars);
+                    if (result == -1) break; // EOF
+                    readChars += result;
+                }
+                bodyBuilder.append(bodyChars);
+            }
 
+            String requestBody = bodyBuilder.toString();
             String headers = headerBuilder.toString();
             String[] headerLines = headers.split("\r\n");
-            System.out.println(Arrays.toString(headerLines));
 
             if(parts.length >= 2 && "/".equals(parts[1])){
                 sendOk(clientSocket);
@@ -81,7 +87,7 @@ class Worker implements Runnable{
                         .replaceAll("^[/\\s]+", "");
                 sendHeaderResponse(clientSocket, message);
             }
-            else if(parts.length >= 2 && parts[1].matches("^/files.*") && !dir.isEmpty()){
+            else if(parts.length >= 2 && parts[0].equals("GET") && parts[1].matches("^/files.*") && !dir.isEmpty()){
                 String filePath = parts[1].substring("/files/".length());
                 if(Files.exists(Path.of(dir+"/"+filePath))){
                     String fileContent = Files.readString(Path.of(dir+"/"+filePath));
@@ -93,7 +99,7 @@ class Worker implements Runnable{
             else if(parts.length >=2 && parts[0].equals("POST")){
                 String filePath = parts[1].substring("/files/".length());
                 Path dirFilePath = Paths.get(dir+"/"+filePath);
-                Files.write(dirFilePath, requestBody.getBytes(StandardCharsets.UTF_8));
+                Files.writeString(dirFilePath, requestBody);
                 send201Response(clientSocket);
             }
             else{
