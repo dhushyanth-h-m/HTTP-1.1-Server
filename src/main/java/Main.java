@@ -7,12 +7,22 @@ public class Main {
         try (ServerSocket serverSocket = new ServerSocket(4221)) {
             serverSocket.setReuseAddress(true);
             System.out.println("Server started. Listening on port 4221");
+            String dir = "";
 
-            while (true) {
+            if(args.length == 2 && args[0].equals("--directory")){
+                dir = args[1];
+            }
+
+            while(true) {
                 Socket clientSocket = serverSocket.accept();
                 System.out.println("Accepted new connection");
 
-                Thread workerThread = new Thread(new Worker(clientSocket));
+                Thread workerThread = null;
+
+                if(!dir.isEmpty())
+                    workerThread = new Thread(new Worker(clientSocket, dir));
+                else
+                    workerThread= new Thread(new Worker(clientSocket));
                 workerThread.start();
             }
         } catch (IOException e) {

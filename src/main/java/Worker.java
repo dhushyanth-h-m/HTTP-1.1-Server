@@ -3,18 +3,26 @@ import java.io.IOException;
 import java.io.InputStreamReader;
 import java.io.OutputStream;
 import java.net.Socket;
+import java.nio.file.Files;
+import java.nio.file.Path;
 import java.util.Arrays;
 
 class Worker implements Runnable{
     private Socket clientSocket;
+    String dir = "";
 
     public Worker(Socket clientSocket){
         this.clientSocket = clientSocket;
     }
 
+    public Worker(Socket clientSocket, String dir){
+        this.clientSocket = clientSocket;
+        this.dir = dir;
+    }
+
     public void run(){
         try{
-            handleClientRequests(clientSocket);
+            handleClientRequests(clientSocket, dir);
         }catch(IOException e){
             System.out.println("IOException: "+e.getMessage());
         } finally {
@@ -26,7 +34,7 @@ class Worker implements Runnable{
         }
     }
 
-    private static void handleClientRequests(Socket clientSocket) throws IOException {
+    private static void handleClientRequests(Socket clientSocket, String dir) throws IOException {
         System.out.println("accepted new connection");
         InputStreamReader inputStream = new InputStreamReader(clientSocket.getInputStream());
         try(BufferedReader reader = new BufferedReader(inputStream)){
@@ -58,6 +66,15 @@ class Worker implements Runnable{
                         .replaceAll("^[/\\s]+", "");
                 sendHeaderResponse(clientSocket, message);
             }
+            else if(parts.length >= 2 && parts[1].matches("^/files.*") && !dir.isEmpty()){
+                String filePath = parts[1].substring("/files/".length());
+                if(Files.exists(Path.of(dir+"/"+filePath))){
+                    String fileContent = Files.readString(Path.of(dir+"/"+filePath));
+                    sendFileContentResponse(clientSocket, fileContent);
+                }
+                else
+                    send404(clientSocket);
+            }
             else{
                 send404(clientSocket);
             }
@@ -65,7 +82,6 @@ class Worker implements Runnable{
         catch (Exception e){
             System.out.println("IO Exception"+ e);
         }
-
     }
 
 
@@ -95,6 +111,16 @@ class Worker implements Runnable{
         OutputStream response = clientSocket.getOutputStream();
         String responseHeaders = "HTTP/1.1 200 OK\r\n" + // Status line
                 "Content-Type: text/plain\r\n" +
+                "Content-Length: " + message.length() + "\r\n" + // Header
+                "\r\n" + // Blank line to end headers
+                message; // Response body
+        response.write(responseHeaders.getBytes());
+    }
+
+    public static void sendFileContentResponse(Socket clientSocket, String message) throws IOException{
+        OutputStream response = clientSocket.getOutputStream();
+        String responseHeaders = "HTTP/1.1 200 OK\r\n" + // Status line
+                "Content-Type: application/octet-stream\r\n" +
                 "Content-Length: " + message.length() + "\r\n" + // Header
                 "\r\n" + // Blank line to end headers
                 message; // Response body
