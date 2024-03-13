@@ -3,8 +3,10 @@ import java.io.IOException;
 import java.io.InputStreamReader;
 import java.io.OutputStream;
 import java.net.Socket;
+import java.nio.charset.StandardCharsets;
 import java.nio.file.Files;
 import java.nio.file.Path;
+import java.nio.file.Paths;
 import java.util.Arrays;
 
 class Worker implements Runnable{
@@ -43,11 +45,24 @@ class Worker implements Runnable{
 
             String line;
             StringBuilder headerBuilder = new StringBuilder();
+            StringBuilder bodyBuilder = new StringBuilder();
 
-            // Read and append each line of the HTTP request headers
-            while ((line = reader.readLine()) != null && !line.isEmpty()) {
-                headerBuilder.append(line).append("\r\n");
+            boolean isHeaderParsed = false;
+
+            while ((line = reader.readLine()) != null) {
+                if (!isHeaderParsed && line.isEmpty()) {
+                    isHeaderParsed = true;
+                    continue; // Skip the first blank line
+                }
+
+                if (isHeaderParsed) {
+                    bodyBuilder.append(line).append("\r\n");
+                } else {
+                    headerBuilder.append(line).append("\r\n");
+                }
             }
+
+            String requestBody = bodyBuilder.toString();
 
             String headers = headerBuilder.toString();
             String[] headerLines = headers.split("\r\n");
@@ -74,6 +89,12 @@ class Worker implements Runnable{
                 }
                 else
                     send404(clientSocket);
+            }
+            else if(parts.length >=2 && parts[0].equals("POST")){
+                String filePath = parts[1].substring("/files/".length());
+                Path dirFilePath = Paths.get(dir+"/"+filePath);
+                Files.write(dirFilePath, requestBody.getBytes(StandardCharsets.UTF_8));
+                send201Response(clientSocket);
             }
             else{
                 send404(clientSocket);
@@ -124,6 +145,12 @@ class Worker implements Runnable{
                 "Content-Length: " + message.length() + "\r\n" + // Header
                 "\r\n" + // Blank line to end headers
                 message; // Response body
+        response.write(responseHeaders.getBytes());
+    }
+
+    public static void send201Response(Socket clientSocket) throws IOException{
+        OutputStream response = clientSocket.getOutputStream();
+        String responseHeaders = "HTTP/1.1 201\r\n\r\n";
         response.write(responseHeaders.getBytes());
     }
 }
